@@ -3,25 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum BlockType
-{
-    Normal_Blue,
-    Normal_Green,
-    Normal_Orange,
-    Normal_Purple,
-    Normal_Red,
-    Normal_Yellow,
-
-    Special_SpinningTop,
-}
-
-public enum BlockMovability
-{
-    Movable,
-    Immovable
-}
-
-public static class UTIL
+public static class Util
 {
     public static bool TryFindComponent<T>(out T component) where T : UnityEngine.Object
     {
@@ -80,7 +62,7 @@ public static class UTIL
         return TryGetComponent(out component, go);
     }
 
-    // ✅ List<T> 범위 지정 셔플
+    // List<T> 범위 지정 셔플
     public static void Shuffle<T>(this List<T> list, int startIndex, int endIndex, System.Random random)
     {
         for (int i = endIndex - 1; i > startIndex; i--)
@@ -93,7 +75,7 @@ public static class UTIL
         }
     }
 
-    // ✅ List<T> 전체 셔플
+    // List<T> 전체 셔플
     public static void Shuffle<T>(this List<T> list, System.Random random = null)
     {
         if (random == null)
@@ -102,7 +84,7 @@ public static class UTIL
         list.Shuffle(0, list.Count, random);
     }
 
-    // ✅ Array(T[]) 범위 지정 셔플
+    // Array(T[]) 범위 지정 셔플
     public static void Shuffle<T>(this T[] array, int startIndex, int endIndex, System.Random random = null)
     {
         if (random == null)
@@ -118,7 +100,7 @@ public static class UTIL
         }
     }
 
-    // ✅ Array(T[]) 전체 셔플
+    // Array(T[]) 전체 셔플
     public static void Shuffle<T>(this T[] array, System.Random random = null)
     {
         if (random == null)

@@ -1,4 +1,4 @@
-public static class APP
+public static class App
 {
     private static GameManager _gameMgr;
 
@@ -8,7 +8,7 @@ public static class APP
         {
             if (_gameMgr == null)
             {
-                if (!UTIL.TryFindComponent(out _gameMgr))
+                if (!Util.TryFindComponent(out _gameMgr))
                     return null;
             }
 

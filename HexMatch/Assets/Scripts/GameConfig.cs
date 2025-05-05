@@ -44,6 +44,11 @@ public class GameConfig : ScriptableObject
     [HideInInspector]
     public List<BoardRow> SpinningTopSpawnBoard = new();
 
+    [Header("프레임 설정")]
+    public int FPS = 60;
+
+    public Vector2Int BlockSpawnAxial => new Vector2Int(this.Width - 1, 0);
+
     public int NormalBlockTypeCount
     {
         get

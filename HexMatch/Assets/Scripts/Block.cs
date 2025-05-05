@@ -1,27 +1,18 @@
 using DG.Tweening;
-using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDragHandler
 {
-    [field: SerializeField]
     public BlockType Type { get; private set; }
 
-    [field: SerializeField]
     public Vector2Int Axial { get; private set; } // (q, r)
 
     public RectTransform RectTransform { get; private set; }
 
-    private GameConfig GameConfig => APP.GameMgr.Config;
-
     public bool IsMoving { get; private set; }
 
-    private Vector2 _dragStartPos;
-    private bool _isDragging = false;
-
-    [field: SerializeField]
     public int HP { get; private set; }
 
     public BlockMovability Movability { get; private set; }
@@ -30,16 +21,37 @@ public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDragH
 
     private Vector3 _originEulerAngles;
 
+    private Vector2 _dragStartPos;
+    private bool _isDragging = false;
+
+    private GameConfig GameConfig => App.GameMgr.Config;
+
+    public static void Destroy(ref Block block)
+    {
+        block?.Destroy();
+        block = null;
+    }
+
+    private void Destroy()
+    {
+        _spinAnimTween.Kill();
+        _spinAnimTween = null;
+
+        this.IsMoving = false;
+
+        Destroy(this.gameObject);
+    }
+
     public static bool Create(out Block outBlock, GameObject rootGO, BlockType type, Vector2Int axial)
     {
         outBlock = null;
 
-        if (!UTIL.TryLoadResource(out GameObject blockRes, "Prefabs/block"))
+        if (!Util.TryLoadResource(out GameObject blockRes, "Prefabs/block"))
             return false;
 
         GameObject go = Object.Instantiate(blockRes, rootGO.transform);
 
-        if (!UTIL.TryGetComponent(out outBlock, go))
+        if (!Util.TryGetComponent(out outBlock, go))
             return false;
 
         return outBlock.OnCreate(type, axial);
@@ -50,21 +62,17 @@ public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDragH
         this.Type = type;
         this.Axial = axial;
 
-        if (!UTIL.TryGetComponent(out RectTransform outRt, this.gameObject))
-            return false;
+        if (!Util.TryGetComponent(out RectTransform outRect, this.gameObject)) return false;
+        if (!Util.TryGetComponent(out Image outImg, this.gameObject)) return false;
+        if (!TryGetBlockSprite(out Sprite outSprite, type)) return false;
 
-        this.RectTransform = outRt;
+        this.RectTransform = outRect;
         this.RectTransform.anchoredPosition = GetAnchoredPos(axial);
-
-        if (!UTIL.TryGetComponent(out Image outImg, this.gameObject))
-            return false;
-        if (!TryGetBlockSprite(out Sprite outSprite, this.Type))
-            return false;
 
         outImg.sprite = outSprite;
 
-        this.HP = GUTIL.GetBlockMaxHP(this.Type);
-        this.Movability = GUTIL.GetBlockMovableType(this.Type);
+        this.HP = GUtil.GetBlockMaxHP(this.Type);
+        this.Movability = GUtil.GetBlockMovableType(this.Type);
 
         RefreshName();
 
@@ -77,43 +85,13 @@ public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDragH
     {
         string blockSpriteName = type.ToString().ToLower();
 
-        if (!UTIL.TryLoadResource(out outSprite, $"icons/{blockSpriteName}"))
+        if (!Util.TryLoadResource(out outSprite, $"icons/{blockSpriteName}"))
         {
-            UTIL.TryLoadResource(out outSprite, $"icons/normal_blue");
+            Util.TryLoadResource(out outSprite, $"icons/normal_blue");
             return false;
         }
 
         return true;
-    }
-
-    public IEnumerator MinimizeCoroutine(float shrinkSpeed, float threshold)
-    {
-        while (true)
-        {
-            // 오브젝트가 파괴되었으면 코루틴 종료
-            if (this == null || transform == null)
-                yield break;
-
-            if (transform.localScale.x > threshold)
-            {
-                transform.localScale -= Vector3.one * shrinkSpeed * Time.deltaTime;
-
-                if (transform.localScale.x < threshold)
-                    transform.localScale = Vector3.one * threshold;
-            }
-            else
-            {
-                // 작아질 만큼 다 줄어들었으면 끝낸다
-                yield break;
-            }
-
-            yield return null;
-        }
-    }
-
-    public bool IsMinimize(float threshold)
-    {
-        return transform.localScale.x <= threshold;
     }
 
     public void SetPos(Vector2Int axial)
@@ -148,7 +126,7 @@ public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDragH
 
         this.RectTransform.DOKill();
         this.RectTransform.DOAnchorPos(targetPos, moveDuration)
-            .SetEase(APP.GameMgr.Config.BlockMoveGraph)
+            .SetEase(App.GameMgr.Config.BlockMoveGraph)
             .OnComplete(() =>
             {
                 this.IsMoving = false;
@@ -191,7 +169,7 @@ public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDragH
 
     void IPointerDownHandler.OnPointerDown(PointerEventData eventData)
     {
-        if (!APP.GameMgr.BoardMgr.IsInputEnabled())
+        if (!App.GameMgr.BoardMgr.IsInputEnabled())
             return;
 
         _dragStartPos = eventData.position;
@@ -210,9 +188,9 @@ public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDragH
 
         Vector2 direction = dragDelta.normalized;
 
-        Vector2Int moveDir = GUTIL.GetAxialMoveDir(direction);
+        Vector2Int moveDir = GUtil.GetAxialMoveDir(direction);
 
-        APP.GameMgr.BoardMgr.TryMoveBlockByPlayer(this, moveDir);
+        App.GameMgr.BoardMgr.TryMoveBlockByPlayer(this, moveDir);
 
         _isDragging = false;
     }
@@ -275,8 +253,7 @@ public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDragH
     public void RefreshAnim()
     {
         if (IsUseSpinAnim())
-        {
             PlaySpinAnim();
-        }
     }
+
 }

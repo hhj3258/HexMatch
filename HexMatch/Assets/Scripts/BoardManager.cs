@@ -13,7 +13,7 @@ public class BoardManager
         new Vector2Int(-1, 0), // 왼쪽 아래
     };
 
-    public enum BoardState
+    public enum State
     {
         Idle,
         Dropping,
@@ -25,21 +25,33 @@ public class BoardManager
         Error,
     }
 
-    private BoardState _boardState = BoardState.Idle;
+    private State _boardState = State.Idle;
 
     private Block[,] _grid;
+
     private RectTransform _boardRootRT;
-
-    private GameConfig GameConfig => APP.GameMgr.Config;
-
-    private readonly Vector2Int c_spawnAxial = new Vector2Int(5, 0);
 
     private bool _isInputEnabled = true;
 
-    public int GameScore { get; private set; }
-    public int TargetBlockCount { get; private set; }
+    private GameConfig GameConfig => App.GameMgr.Config;
 
-    public bool isFinishGame = false;
+    public static void Destroy(ref BoardManager boardManager)
+    {
+        boardManager?.Destroy();
+        boardManager = null;
+    }
+
+    private void Destroy()
+    {
+        foreach (var block in _grid)
+        {
+            if (block != null)
+            {
+                var item = block;
+                Block.Destroy(ref item);
+            }
+        }
+    }
 
     public static bool Create(out BoardManager outBoardMgr)
     {
@@ -51,11 +63,11 @@ public class BoardManager
     {
         _grid = new Block[this.GameConfig.Width, this.GameConfig.Height];
 
-        if (!UTIL.TryFindComponent(out _boardRootRT, "block_root")) return false;
+        if (!Util.TryFindComponent(out _boardRootRT, "block_root")) return false;
 
         CreateBoard();
 
-        EnterState(BoardState.Matching);
+        EnterState(State.Matching);
         return true;
     }
 
@@ -65,13 +77,12 @@ public class BoardManager
         {
             for (int r = 0; r < this.GameConfig.Height; r++)
             {
-                if (!GUTIL.IsValidCell(q, r, this.GameConfig.BoardShape))
+                if (!GUtil.IsValidCell(q, r, this.GameConfig.BoardShape))
                     continue;
 
                 if (IsNeedSpawnSpinningTopBlock(q, r))
                 {
                     CreateBlock(q, r, BlockType.Special_SpinningTop);
-                    this.TargetBlockCount += 1;
                 }
                 else
                 {
@@ -80,11 +91,13 @@ public class BoardManager
             }
         }
 
-        bool IsNeedSpawnSpinningTopBlock(int q, int r)
-        {
-            var spinBoard = this.GameConfig.SpinningTopSpawnBoard;
-            return GUTIL.IsValidCell(q, r, spinBoard) && spinBoard[q].Cells[r];
-        }
+
+    }
+
+    private bool IsNeedSpawnSpinningTopBlock(int q, int r)
+    {
+        var spinBoard = this.GameConfig.SpinningTopSpawnBoard;
+        return GUtil.IsValidCell(q, r, spinBoard) && spinBoard[q].Cells[r];
     }
 
     private bool CreateBlock(int q, int r, BlockType blockType)
@@ -100,33 +113,41 @@ public class BoardManager
 
     public void Update()
     {
+        UpdateState();
+    }
+
+    private void UpdateState()
+    {
         switch (_boardState)
         {
-            case BoardState.Dropping:
+            case State.Dropping:
                 if (TryFindCanMoveBlock(out Block outCanMoveBlock))
                 {
                     TryMoveBlock(outCanMoveBlock.Axial.x, outCanMoveBlock.Axial.y);
                 }
                 else
                 {
-                    EnterState(BoardState.Spawning, this.GameConfig.BlockSpawnDuration);
+                    EnterState(State.Spawning, this.GameConfig.BlockSpawnDuration);
                 }
                 break;
 
-            case BoardState.Spawning:
-                if (IsEmptyCell(c_spawnAxial.x, c_spawnAxial.y))
-                {
-                    TryMakeBlock(out _, c_spawnAxial.x, c_spawnAxial.y);
+            case State.Spawning:
 
-                    EnterState(BoardState.Dropping);
+                Vector2Int spawnAxial = this.GameConfig.BlockSpawnAxial;
+
+                if (IsEmptyCell(spawnAxial.x, spawnAxial.y))
+                {
+                    TryMakeBlock(out _, spawnAxial.x, spawnAxial.y);
+
+                    EnterState(State.Dropping);
                 }
                 else
                 {
-                    EnterState(BoardState.Matching);
+                    EnterState(State.Matching);
                 }
                 break;
 
-            case BoardState.Matching:
+            case State.Matching:
                 if (IsAllBlocksStopped())
                 {
                     if (TryFindMatchingBlocks(out List<Block> outMatchingBlocks))
@@ -135,23 +156,23 @@ public class BoardManager
                     }
                     else if (IsInAnyEmptyCell())
                     {
-                        EnterState(BoardState.Dropping);
+                        EnterState(State.Dropping);
                     }
                     else
                     {
-                        EnterState(BoardState.Idle);
+                        EnterState(State.Idle);
                     }
                 }
                 break;
 
-            case BoardState.Idle:
-            case BoardState.Wait:
-            case BoardState.Error:
+            case State.Idle:
+            case State.Wait:
+            case State.Error:
                 break;
 
             default:
                 Debug.LogError($"No handling boardState({_boardState})");
-                EnterState(BoardState.Error);
+                EnterState(State.Error);
                 break;
         }
     }
@@ -164,13 +185,13 @@ public class BoardManager
         }
     }
 
-    public void EnterState(BoardState nextState, float waitDuration)
+    public void EnterState(State nextState, float waitDuration)
     {
-        EnterState(BoardState.Wait);
+        EnterState(State.Wait);
         DOVirtual.DelayedCall(waitDuration, () => EnterState(nextState));
     }
 
-    public void EnterState(BoardState nextState)
+    public void EnterState(State nextState)
     {
         if (nextState == _boardState) // 동일 스테이트에 중복 진입하면 흐름에 문제가 있음
         {
@@ -183,27 +204,27 @@ public class BoardManager
 
         switch (nextState)
         {
-            case BoardState.Dropping:
+            case State.Dropping:
                 DropBlocks();
                 break;
 
-            case BoardState.Error:
-                APP.GameMgr.ReloadGame();
+            case State.Error:
+                App.GameMgr.ReloadGame();
                 break;
 
-            case BoardState.Idle:
+            case State.Idle:
                 if (IsAllBlocksStopped())
                     RefreshAllBlockAnim();
                 break;
 
-            case BoardState.Spawning:
-            case BoardState.Matching:
-            case BoardState.Wait:
+            case State.Spawning:
+            case State.Matching:
+            case State.Wait:
                 break;
 
             default:
                 Debug.LogError($"No handling boardState({_boardState})");
-                EnterState(BoardState.Error);
+                EnterState(State.Error);
                 break;
         }
     }
@@ -216,7 +237,7 @@ public class BoardManager
 
     public bool IsInputEnabled()
     {
-        return _isInputEnabled && _boardState == BoardState.Idle;
+        return _isInputEnabled && _boardState == State.Idle;
     }
 
     private void SetInputEnabled(bool isEnabled)
@@ -232,7 +253,7 @@ public class BoardManager
         Vector2Int fromAxial = selectedBlock.Axial;
         Vector2Int toAxial = fromAxial + moveDir;
 
-        if (!GUTIL.IsValidCell(toAxial.x, toAxial.y, this.GameConfig.BoardShape))
+        if (!GUtil.IsValidCell(toAxial.x, toAxial.y, this.GameConfig.BoardShape))
             return;
 
         Block targetBlock = _grid[toAxial.x, toAxial.y];
@@ -246,25 +267,25 @@ public class BoardManager
         // 2. 매칭 검사
         HashSet<Block> matchingBlocks = new();
 
-        List<Block> selectedBlocks = GUTIL.GetNearbyBlocksRecursive(selectedBlock, selectedBlock.Type, _grid, this.GameConfig.BoardShape);
+        List<Block> selectedBlocks = GUtil.GetNearbyBlocksRecursive(selectedBlock, selectedBlock.Type, _grid, this.GameConfig.BoardShape);
         foreach (Block block in selectedBlocks)
         {
-            var matching = GUTIL.FindMatchingBlocks(block, _grid, this.GameConfig.BoardShape);
+            var matching = GUtil.FindMatchingBlocks(block, _grid, this.GameConfig.BoardShape);
             matchingBlocks.AddRange(matching);
         }
 
-        List<Block> targetBlocks = GUTIL.GetNearbyBlocksRecursive(targetBlock, targetBlock.Type, _grid, this.GameConfig.BoardShape);
+        List<Block> targetBlocks = GUtil.GetNearbyBlocksRecursive(targetBlock, targetBlock.Type, _grid, this.GameConfig.BoardShape);
         foreach (Block block in targetBlocks)
         {
-            var matching = GUTIL.FindMatchingBlocks(block, _grid, this.GameConfig.BoardShape);
+            var matching = GUtil.FindMatchingBlocks(block, _grid, this.GameConfig.BoardShape);
             matchingBlocks.AddRange(matching);
         }
 
-        var onCompleteFunc = UTIL.WaitUntilTrue(() => !selectedBlock.IsMoving && !targetBlock.IsMoving, () =>
+        var onCompleteFunc = Util.WaitUntilTrue(() => !selectedBlock.IsMoving && !targetBlock.IsMoving, () =>
         {
             OnCompleteMoveByPlayer(selectedBlock, targetBlock, matchingBlocks);
         });
-        APP.GameMgr.CoroutineMgr.Run(onCompleteFunc);
+        App.GameMgr.CoroutineMgr.Run(onCompleteFunc);
     }
 
     private void OnCompleteMoveByPlayer(Block selectedBlock, Block targetBlock, HashSet<Block> matchingBlocks)
@@ -272,7 +293,7 @@ public class BoardManager
         if (matchingBlocks.Count >= this.GameConfig.MinMatchCount)
         {
             // 3. 매칭 성공: 매칭 흐름으로 넘어간다
-            EnterState(BoardState.Matching);
+            EnterState(State.Matching);
         }
         else
         {
@@ -307,11 +328,6 @@ public class BoardManager
             if (block.HP <= 0)
             {
                 DestroyBlock(block);
-
-                if (block.Type == BlockType.Special_SpinningTop)
-                {
-                    IncGameScore();
-                }
             }
         }
     }
@@ -321,16 +337,8 @@ public class BoardManager
         Vector2Int pos = block.Axial;
         Object.Destroy(block.gameObject);
         _grid[pos.x, pos.y] = null;
-    }
 
-    private void IncGameScore()
-    {
-        this.GameScore++;
-
-        if (this.GameScore >= this.GameConfig.GameClearScore)
-        {
-            APP.GameMgr.OnClearGame.Invoke();
-        }
+        App.GameMgr.onDestroyBlock.Invoke(block.Type);
     }
 
     private void DropBlocks()
@@ -349,7 +357,7 @@ public class BoardManager
 
     private void FillCell(int q, int r)
     {
-        if (!GUTIL.IsValidCell(q, r, this.GameConfig.BoardShape))
+        if (!GUtil.IsValidCell(q, r, this.GameConfig.BoardShape))
             return;
 
         if (_grid[q, r] != null)
@@ -363,7 +371,7 @@ public class BoardManager
             searchQ += 1;
             searchR -= 1;
 
-            if (!GUTIL.IsValidCell(searchQ, searchR, this.GameConfig.BoardShape))
+            if (!GUtil.IsValidCell(searchQ, searchR, this.GameConfig.BoardShape))
                 break;
 
             if (_grid[searchQ, searchR] != null)
@@ -448,6 +456,7 @@ public class BoardManager
             if (block != null && block.IsMoving)
                 return false;
         }
+
         return true;
     }
 
@@ -466,7 +475,7 @@ public class BoardManager
 
     private bool IsEmptyCell(int q, int r)
     {
-        if (!GUTIL.IsValidCell(q, r, this.GameConfig.BoardShape))
+        if (!GUtil.IsValidCell(q, r, this.GameConfig.BoardShape))
             return false;
 
         return _grid[q, r] == null;
@@ -494,7 +503,7 @@ public class BoardManager
     private bool TryFindMatchingBlocks(out List<Block> outBlocks)
     {
         outBlocks = new List<Block>();
-        HashSet<Block> matchedBlocksSet = new HashSet<Block>();
+        HashSet<Block> matchedBlocksSet = new();
 
         for (int q = 0; q < this.GameConfig.Width; q++)
         {
@@ -504,7 +513,7 @@ public class BoardManager
                 if (block == null)
                     continue;
 
-                List<Block> matchingBlocks = GUTIL.FindMatchingBlocks(block, _grid, this.GameConfig.BoardShape);
+                List<Block> matchingBlocks = GUtil.FindMatchingBlocks(block, _grid, this.GameConfig.BoardShape);
                 if (matchingBlocks.Count < this.GameConfig.MinMatchCount)
                     continue;
 
@@ -516,35 +525,11 @@ public class BoardManager
             return false;
 
         outBlocks = matchedBlocksSet.ToList();
-        outBlocks.AddRange(GUTIL.GetNearbySpinningTopBlocks(outBlocks, _grid, this.GameConfig.BoardShape));
+
+        List<Block> spinningBlocks = GUtil.GetNearbySpinningTopBlocks(outBlocks, _grid, this.GameConfig.BoardShape);
+        outBlocks.AddRange(spinningBlocks);
 
         return true;
     }
-
-    //private void HandleMatchingBlocks(List<Block> matchedBlocks)
-    //{
-    //    foreach (var block in matchedBlocks)
-    //    {
-    //        if (!block.IsMinimize(0.5f))
-    //        {
-    //            APP.GameMgr.CoroutineMgr.Run(
-    //            block.MinimizeCoroutine(0.5f, 0.5f));
-    //        }
-    //        else
-    //        {
-    //            APP.GameMgr.CoroutineMgr.Stop(block.MinimizeCoroutine(0.5f, 0.5f));
-    //        }
-    //    }
-    //}
-
-    //private bool AllBlocksMinimize(List<Block> blocks)
-    //{
-    //    foreach (var block in blocks)
-    //    {
-    //        if (block != null && !block.IsMinimize(0.5f))
-    //            return false;
-    //    }
-    //    return true;
-    //}
 
 }

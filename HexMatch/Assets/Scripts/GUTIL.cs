@@ -2,11 +2,29 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+public enum BlockType
+{
+    Normal_Blue,
+    Normal_Green,
+    Normal_Orange,
+    Normal_Purple,
+    Normal_Red,
+    Normal_Yellow,
+
+    Special_SpinningTop,
+}
+
+public enum BlockMovability
+{
+    Movable,
+    Immovable
+}
+
 /// <summary>
 /// Game Util
 /// 게임 전용 유틸리티 함수 모음 (퍼즐 로직, 보드 탐색 등)
 /// </summary>
-public static class GUTIL
+public static class GUtil
 {
     private static readonly Vector2Int[] s_nearbyDirections = new Vector2Int[]
     {
@@ -125,7 +143,7 @@ public static class GUTIL
         CheckLineMatch(startBlock, grid, boardShape, matchedBlocks);
         CheckSquareMatch(startBlock, grid, boardShape, matchedBlocks);
 
-        if (matchedBlocks.Count < APP.GameMgr.Config.MinMatchCount)
+        if (matchedBlocks.Count < App.GameMgr.Config.MinMatchCount)
             return new List<Block>();
 
         return new List<Block>(matchedBlocks);
@@ -158,7 +176,7 @@ public static class GUTIL
                 {
                     curAxial += dir * sign;
 
-                    if (!GUTIL.IsValidCell(curAxial.x, curAxial.y, boardShape))
+                    if (!GUtil.IsValidCell(curAxial.x, curAxial.y, boardShape))
                         break;
 
                     Block nextBlock = grid[curAxial.x, curAxial.y];
@@ -169,7 +187,7 @@ public static class GUTIL
                 }
             }
 
-            if (lineGroup.Count >= APP.GameMgr.Config.MinMatchCount)
+            if (lineGroup.Count >= App.GameMgr.Config.MinMatchCount)
             {
                 foreach (var block in lineGroup)
                     matchedBlocks.Add(block);
@@ -196,9 +214,9 @@ public static class GUTIL
             Vector2Int check2 = startBlock.Axial + pattern[1];
             Vector2Int check3 = startBlock.Axial + pattern[2];
 
-            if (!GUTIL.IsValidCell(check1.x, check1.y, boardShape)) continue;
-            if (!GUTIL.IsValidCell(check2.x, check2.y, boardShape)) continue;
-            if (!GUTIL.IsValidCell(check3.x, check3.y, boardShape)) continue;
+            if (!GUtil.IsValidCell(check1.x, check1.y, boardShape)) continue;
+            if (!GUtil.IsValidCell(check2.x, check2.y, boardShape)) continue;
+            if (!GUtil.IsValidCell(check3.x, check3.y, boardShape)) continue;
 
             Block block1 = grid[check1.x, check1.y];
             Block block2 = grid[check2.x, check2.y];
@@ -269,14 +287,14 @@ public static class GUTIL
             case BlockType.Normal_Purple:
             case BlockType.Normal_Red:
             case BlockType.Normal_Yellow:
-                return APP.GameMgr.Config.NormalBlockHP;
+                return App.GameMgr.Config.NormalBlockHP;
 
             case BlockType.Special_SpinningTop:
-                return APP.GameMgr.Config.SpinningTopBlockHP;
+                return App.GameMgr.Config.SpinningTopBlockHP;
 
             default:
                 Debug.LogError($"No handling blockType({blockType})");
-                return APP.GameMgr.Config.NormalBlockHP;
+                return App.GameMgr.Config.NormalBlockHP;
         }
     }
 

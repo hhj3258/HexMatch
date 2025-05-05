@@ -87,7 +87,7 @@ GameObject:
   - component: {fileID: 7399596148497073291}
   - component: {fileID: 586892655372897614}
   m_Layer: 5
-  m_Name: Image
+  m_Name: image
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -210,8 +210,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 92211111cef7cf746a49f46a0f95366f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  popupRect: {fileID: 2633889391513038728}
-  canvasGroup: {fileID: -8924113228318706372}
+  _imgRect: {fileID: 2633889391513038728}
+  _canvasGroup: {fileID: -8924113228318706372}
 --- !u!225 &-8924113228318706372
 CanvasGroup:
   m_ObjectHideFlags: 0
