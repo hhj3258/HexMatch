@@ -1,5 +1,9 @@
 # HexMatch
 
+## 🎮 게임 화면
+
+![Honeycam 2025-05-07 23-18-37](https://github.com/user-attachments/assets/42402880-f224-4515-aebb-b324668a8d58)
+
 ## 🚀 실행 방법
 
 1. Unity6 6000.0.13f1 이상에서 열기
@@ -42,5 +46,6 @@
 | **매칭 조건**   | 팽이는 매칭 대상 아님. 인접한 매칭 발생 시 영향받음                       |
 | **연출**        | HP가 1이 되면 팽이 회전 애니메이션 실행 (`Block.PlaySpinAnim`)            |
 | **클리어 조건** | 모든 팽이 제거 시 클리어 (`GameConfig.GameClearScore`만큼 점수 획득 필요) |
+
 
 
